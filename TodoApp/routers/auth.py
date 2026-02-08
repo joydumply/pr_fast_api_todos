@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,17 @@ def authenticate_user(username: str, password: str, db):
 
 @router.post("/auth", status_code=status.HTTP_201_CREATED)
 async def create_user(db: db_dependency, create_user_request: CreateUserRequest):
-    #create_user_model = Users(**create_user_request.model_dump()) # Will fire an error because CreateUserRequest has "password" field, not "hashed_password" field
+    #create_user_model = Users(**create_user_request.model_dump()) # Will fire an error because CreateUserRequest has "password" field, not "hashed_password" field\
+
+    is_username_occupied = bool(db.query(Users).filter(Users.username == create_user_request.username).first())
+    is_email_occupied = bool(db.query(Users).filter(Users.email == create_user_request.email).first())
+
+    if is_username_occupied:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username is already registered")
+
+    if is_email_occupied:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
 
     create_user_model = Users(
         email=create_user_request.email,
